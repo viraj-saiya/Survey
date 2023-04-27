@@ -1,38 +1,47 @@
-const express = require("express");
-const app = express();
+const express = require('express');
+const mongoose = require('mongoose');
+const keys = require('./config/keys');
+// const cookieSession = require('cookie-session');
 const passport = require("passport");
-const GoogleStrategy = require("passport-google-oauth20").Strategy;
-const keys = require("./config/keys");
+const expressSession = require('express-session')
+var MongoDBStore = require('connect-mongodb-session')(expressSession);
 
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: keys.GOOGLE_CLIENT_ID,
-      clientSecret: keys.GOOGLE_CLIENT_SECRET,
-      callbackURL: "/auth/google/callback",
-      // scope: [ 'profile','email' ],
-      // state: true
-    },
-    (accessToken, refreshToken, profile, cb) => {
-      console.log(
-        "accessToken : ", accessToken,
-        "\nrefreshToken : ", refreshToken,
-        "\n profile : ", profile,
-        " \ndone : ", done
-      );
-    }
-  )
+require('./models/user');
+require('./services/passport');
+
+const app = express();
+
+mongoose.connect(keys.MONGODB_URI).then(()=>{
+  console.log("Connected");
+});
+
+var store = new MongoDBStore({
+  uri: keys.MONGODB_URI,
+  collection: 'userSession'
+});
+
+store.on('error', function(error) {
+  console.log(error);
+});
+
+app.use(
+  expressSession({
+    secret:[keys.cookieKey],
+    resave:false,
+    saveUninitialized:false,
+    cookie: {
+      maxAge: 30 * 24 * 60 * 60 *1000, // 30 Days
+      },
+      store: store,
+
+  })
 );
 
-app.get("/auth/google", passport.authenticate("google",{
-  scope: ["profile", "email"],
-}));
+app.use(passport.initialize());
+app.use(passport.session());
 
-app.get("/auth/google/callback", passport.authenticate("google"));
 
-// app.get('/', (req, res) => {
-//   res.send({"message":"I am Live"})
-// })
+require('./routes/authRoutes')(app);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
