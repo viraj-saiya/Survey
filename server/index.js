@@ -26,7 +26,7 @@ store.on('error', function(error) {
 
 app.use(
   expressSession({
-    secret:[keys.cookieKey],
+    secret:[keys.COOKIE_KEY],
     resave:false,
     saveUninitialized:false,
     cookie: {
